@@ -53,7 +53,7 @@ builder.Services.AddAuthorization();
 // Add services to the container.
 builder.Services.AddControllers();
 
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddSwaggerGen();
 
 // Registrér at I ønsker at bruge NLOG som logger fremadrettet (før builder.build)
