@@ -82,34 +82,29 @@ public class AuthController : ControllerBase
 
         if (response.IsSuccessStatusCode)
         {
-            // Deserialiser respons som bool
             string responseContent = await response.Content.ReadAsStringAsync();
-            bool userExists = JsonSerializer.Deserialize<bool>(responseContent);
+            _logger.LogInformation("Response content: {ResponseContent}", responseContent);
 
-            if (!userExists) // Hvis brugeren ikke findes, returner null
+            try
             {
-                _logger.LogInformation("User with email {Email} does not exist.", login.UserEmail);
+                // Forsøg at deserialisere til User
+                var user = JsonSerializer.Deserialize<User>(responseContent);
+                if (user == null)
+                {
+                    _logger.LogInformation("User with email {Email} does not exist.", login.UserEmail);
+                    return null;
+                }
+
+                _logger.LogInformation("User data successfully deserialized.");
+                return user;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Failed to deserialize user data.");
                 return null;
             }
-            
-            // Hvis brugeren findes, hent brugerdata
-            var userDataUrl = $"{_config["UserServiceEndpoint"]}/byEmail?email={login.UserEmail}";
-            _logger.LogInformation("Retrieving user data from: {UserDataUrl}", userDataUrl);
-
-            response = await client.GetAsync(userDataUrl);
-            if (response.IsSuccessStatusCode)
-            {
-                try
-                {
-                    string userJson = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<User>(userJson); // Forsøg at deserialisere til User-objekt
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, ex.Message);
-                }
-            }
         }
+        _logger.LogWarning("Failed to check if user exists.");
         return null;
     }
 
