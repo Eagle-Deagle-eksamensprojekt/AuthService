@@ -76,5 +76,12 @@ namespace AuthService.Models
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("userId")]
         public string UserId { get; set; }
+
+                /// <summary> 
+        /// Salting for a password so its much harder to figure out the password in the database
+        /// <summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]   
+        [JsonPropertyName("salt")]
+        public string Salt { get; set; }
     }
 }
