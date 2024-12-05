@@ -9,6 +9,8 @@ using VaultSharp;
 using VaultSharp.V1.AuthMethods.Token;
 using VaultSharp.V1.Commons;
 using AuthService.Models;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+
 
 namespace AuthService.Controllers;
 
@@ -80,34 +82,28 @@ public class AuthController : ControllerBase
             return null;
         }
 
-        if (response.IsSuccessStatusCode)
+if (response.IsSuccessStatusCode)
         {
-            // Deserialiser respons som bool
             string responseContent = await response.Content.ReadAsStringAsync();
-            bool userExists = JsonSerializer.Deserialize<bool>(responseContent);
+            _logger.LogInformation("Response content: {ResponseContent}", responseContent);
 
-            if (!userExists) // Hvis brugeren ikke findes, returner null
+            try
             {
-                _logger.LogInformation("User with email {Email} does not exist.", login.UserEmail);
-                return null;
+                // Forsøg at deserialisere til User
+                var user = JsonSerializer.Deserialize<User>(responseContent);
+                if (user == null)
+                {
+                    _logger.LogInformation("User with email {Email} does not exist.", login.UserEmail);
+                    return null;
+                }
+
+                _logger.LogInformation("User data successfully deserialized.");
+                return user;
             }
-            
-            // Hvis brugeren findes, hent brugerdata
-            var userDataUrl = $"{_config["UserServiceEndpoint"]}/byEmail?email={login.UserEmail}";
-            _logger.LogInformation("Retrieving user data from: {UserDataUrl}", userDataUrl);
-
-            response = await client.GetAsync(userDataUrl);
-            if (response.IsSuccessStatusCode)
+            catch (JsonException ex)
             {
-                try
-                {
-                    string userJson = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<User>(userJson); // Forsøg at deserialisere til User-objekt
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, ex.Message);
-                }
+                _logger.LogError(ex, "Failed to deserialize user data.");
+                return null;
             }
         }
         return null;
@@ -116,24 +112,41 @@ public class AuthController : ControllerBase
 
 
     // Opdateret Login-metode
-    [AllowAnonymous]
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginModel login)
+[AllowAnonymous]
+[HttpPost("login")]
+public async Task<IActionResult> Login([FromBody] LoginModel login)
+{
+    // Log brug af email til console for at sikre korrekt værdi
+    _logger.LogInformation("Attempting login with email: {Email}", login.UserEmail);
+    
+    // Hent brugerdata baseret på email
+    var user = await GetUserData(login);
+    if (user == null)
     {
-        // Log brug af email til console for at sikre korrekt værdi
-        _logger.LogInformation("Attempting login with email: {Email}", login.UserEmail);
-        
-        // Tjekker om brugeren eksisterer med den givne email
-        var user = await GetUserData(login);
-        if (user != null && login.Password == "123") // Opret et bedre password-tjek på sigt
-        {
-            var token = await GenerateJwtToken(login.UserEmail);
-            _logger.LogInformation("Login successful for email: {Email}", login.UserEmail);
-            return Ok(new { token });
-        }
-        _logger.LogWarning("Login failed for email: {Email}", login.UserEmail);
-        return Unauthorized();
+        _logger.LogWarning("User with email {Email} not found", login.UserEmail);
+        return Unauthorized("Invalid email or password.");
     }
+
+    // Valider passwordet
+    var hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+        password: login.Password,
+        salt: Convert.FromBase64String(user.Salt),
+        prf: KeyDerivationPrf.HMACSHA256,
+        iterationCount: 100000,
+        numBytesRequested: 256 / 8));
+
+    if (user.Password != hashedInputPassword)
+    {
+        _logger.LogWarning("Invalid password for email {Email}", login.UserEmail);
+        return Unauthorized("Invalid email or password.");
+    }
+
+    // Generer JWT-token, hvis login er succesfuldt
+    var token = await GenerateJwtToken(login.UserEmail);
+    _logger.LogInformation("Login successful for email: {Email}", login.UserEmail);
+    return Ok(new { token });
+}
+
 
 
     private async Task<string> GenerateJwtToken(string username)
