@@ -106,6 +106,7 @@ if (response.IsSuccessStatusCode)
                 return null;
             }
         }
+        _logger.LogWarning("Failed to check if user exists.");
         return null;
     }
 
