@@ -2,3 +2,4 @@ export issuer=http://localhost
 export secret=thisIsASecureSecretKeyThatIs32Chars!
 export VaultURL=http://localhost:8201
 export UserServiceEndpoint=http://localhost:5058/api/user
+export VAULT_DEV_ROOT_TOKEN_ID=00000000-0000-0000-0000-000000000000

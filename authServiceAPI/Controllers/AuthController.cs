@@ -38,7 +38,7 @@ public class AuthController : ControllerBase
         // Vault setup - konfigurer Vault-klient for at hente hemmeligheder
         var vaultEndPoint = _config["VaultURL"]; // Vault-server URL
         _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
-        var token = "00000000-0000-0000-0000-000000000000"; // Vault-token
+        var token = _config["VAULT_DEV_ROOT_TOKEN_ID"]; // Vault-token // miljøvariabel sat i .env til compose
 
         var httpClientHandler = new HttpClientHandler
         {
@@ -113,40 +113,40 @@ if (response.IsSuccessStatusCode)
 
 
     // Opdateret Login-metode
-[AllowAnonymous]
-[HttpPost("login")]
-public async Task<IActionResult> Login([FromBody] LoginModel login)
-{
-    // Log brug af email til console for at sikre korrekt værdi
-    _logger.LogInformation("Attempting login with email: {Email}", login.UserEmail);
-    
-    // Hent brugerdata baseret på email
-    var user = await GetUserData(login);
-    if (user == null)
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginModel login)
     {
-        _logger.LogWarning("User with email {Email} not found", login.UserEmail);
-        return Unauthorized("Invalid email or password.");
+        // Log brug af email til console for at sikre korrekt værdi
+        _logger.LogInformation("Attempting login with email: {Email}", login.UserEmail);
+        
+        // Hent brugerdata baseret på email
+        var user = await GetUserData(login);
+        if (user == null)
+        {
+            _logger.LogWarning("User with email {Email} not found", login.UserEmail);
+            return Unauthorized("Invalid email or password.");
+        }
+
+        // Valider passwordet
+        var hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+            password: login.Password,
+            salt: Convert.FromBase64String(user.Salt),
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: 100000,
+            numBytesRequested: 256 / 8));
+
+        if (user.Password != hashedInputPassword)
+        {
+            _logger.LogWarning("Invalid password for email {Email}", login.UserEmail);
+            return Unauthorized("Invalid email or password.");
+        }
+
+        // Generer JWT-token, hvis login er succesfuldt
+        var token = await GenerateJwtToken(login.UserEmail);
+        _logger.LogInformation("Login successful for email: {Email}", login.UserEmail);
+        return Ok(new { token });
     }
-
-    // Valider passwordet
-    var hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-        password: login.Password,
-        salt: Convert.FromBase64String(user.Salt),
-        prf: KeyDerivationPrf.HMACSHA256,
-        iterationCount: 100000,
-        numBytesRequested: 256 / 8));
-
-    if (user.Password != hashedInputPassword)
-    {
-        _logger.LogWarning("Invalid password for email {Email}", login.UserEmail);
-        return Unauthorized("Invalid email or password.");
-    }
-
-    // Generer JWT-token, hvis login er succesfuldt
-    var token = await GenerateJwtToken(login.UserEmail);
-    _logger.LogInformation("Login successful for email: {Email}", login.UserEmail);
-    return Ok(new { token });
-}
 
 
 
