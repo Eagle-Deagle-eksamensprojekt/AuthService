@@ -34,33 +34,34 @@ public class AuthController : ControllerBase
         _httpClientFactory = httpClientFactory; // tjek
     }
     private async Task GetVaultSecrets() 
+{
+    var vaultEndPoint = _config["VaultURL"];
+    _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
+    var token = "00000000-0000-0000-0000-000000000000";
+
+    var httpClientHandler = new HttpClientHandler
     {
-        // Vault setup - konfigurer Vault-klient for at hente hemmeligheder
-        var vaultEndPoint = _config["VaultURL"]; // Vault-server URL
-        //var vaultEndPoint = "http://vaulthost:8300"; 
-        _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
-        //var token = _config["VAULT_DEV_ROOT_TOKEN_ID"]; // Vault-token // miljøvariabel sat i .env til compose
-        var token = "00000000-0000-0000-0000-000000000000";
+        ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
+    };
 
-        var httpClientHandler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
-        };
+    var authMethod = new TokenAuthMethodInfo(token);
+    var vaultClientSettings = new VaultClientSettings(vaultEndPoint, authMethod)
+    {
+        MyHttpClientProviderFunc = handler => new HttpClient(httpClientHandler) { BaseAddress = new Uri(vaultEndPoint!) }
+    };
 
-        var authMethod = new TokenAuthMethodInfo(token);
-        var vaultClientSettings = new VaultClientSettings(vaultEndPoint, authMethod)
-        {
-            MyHttpClientProviderFunc = handler => new HttpClient(httpClientHandler) { BaseAddress = new Uri(vaultEndPoint!) } // lav tjek om vaultEndPoint er null
-        };
+    IVaultClient vaultClient = new VaultClient(vaultClientSettings);
 
-        IVaultClient vaultClient = new VaultClient(vaultClientSettings);
+    var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "Secrets", mountPoint: "secret");
+    
+    // Gem værdierne i klassevariablerne
+    mySecret = kv2Secret.Data.Data["jwtSecret"]?.ToString() ?? throw new Exception("jwtSecret not found in Vault.");
+    myIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("jwtIssuer not found in Vault.");
 
-        // Hent secret og issuer fra Vault
-        var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "Secrets", mountPoint: "secret");
-        var jwtSecret = kv2Secret.Data.Data["jwtSecret"]?.ToString() ?? throw new Exception("jwtSecret not found in Vault.");
-        var jwtIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("jwtIssuer not found in Vault.");
+    _logger.LogInformation("Vault JWT Secret: {JwtSecret}", mySecret);
+    _logger.LogInformation("Vault JWT Issuer: {JwtIssuer}", myIssuer);
+}
 
-    }
 
     // Indsat fra opgave E i modul 12.1
     // ændret d. 14/11/2024 tilpasset af chat så den sender email i stedet for username
