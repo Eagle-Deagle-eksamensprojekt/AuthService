@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
     {
         // Vault setup - konfigurer Vault-klient for at hente hemmeligheder
         //var vaultEndPoint = _config["VaultURL"]; // Vault-server URL
-        var vaultEndPoint = "http://vaulthost:8200"; 
+        var vaultEndPoint = "http://vaulthost:8300"; 
         _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
         var token = _config["VAULT_DEV_ROOT_TOKEN_ID"]; // Vault-token // miljøvariabel sat i .env til compose
 
