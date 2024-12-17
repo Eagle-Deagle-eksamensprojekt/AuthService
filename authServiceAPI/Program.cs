@@ -17,7 +17,7 @@ var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings()
 
 // Hent Vault-konfigurationer
 //var vaultUrl = builder.Configuration["VaultURL"];  // Vault URL
-var vaultUrl = "http://0.0.0.0:8200";  // Vault URL //skal gøres til miljøvariabel 
+var vaultUrl = "http://vaulthost:8200";  // Vault URL //skal gøres til miljøvariabel 
 var vaultToken = builder.Configuration["VAULT_DEV_ROOT_TOKEN_ID"];  // Vault-token (tilpas som nødvendigt) //skal gøres til miljøvariabel // nu sat til miljøvariabel i .env til compose
 
 // Opsæt Vault klient
@@ -27,8 +27,9 @@ var vaultClient = new VaultClient(vaultClientSettings);
 
 // Hent secret og issuer fra Vault
 var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "Secrets", mountPoint: "secret");
-var jwtSecret = kv2Secret.Data.Data["secret"]?.ToString() ?? throw new Exception("Secret not found in Vault.");
-var jwtIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("Issuer not found in Vault.");
+var jwtSecret = kv2Secret.Data.Data["jwtSecret"]?.ToString() ?? throw new Exception("jwtSecret not found in Vault.");
+var jwtIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("jwtIssuer not found in Vault.");
+
 
 // JWT setup
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
