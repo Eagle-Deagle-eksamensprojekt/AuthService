@@ -17,7 +17,7 @@ var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings()
 
 // Hent Vault-konfigurationer
 //var vaultUrl = builder.Configuration["VaultURL"];  // Vault URL
-var vaultUrl = "http://vaulthost:8300";  // Vault URL //skal gøres til miljøvariabel 
+var vaultUrl = "https://vaulthost:8300";  // Vault URL //skal gøres til miljøvariabel 
 var vaultToken = builder.Configuration["VAULT_DEV_ROOT_TOKEN_ID"];  // Vault-token (tilpas som nødvendigt) //skal gøres til miljøvariabel // nu sat til miljøvariabel i .env til compose
 
 // Opsæt Vault klient
