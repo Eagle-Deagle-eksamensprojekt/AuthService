@@ -26,7 +26,7 @@ var vaultClientSettings = new VaultClientSettings(vaultUrl, authMethod);
 var vaultClient = new VaultClient(vaultClientSettings);
 
 // Hent secret og issuer fra Vault
-var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "hemmeligheder", mountPoint: "secret");
+var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "Secrets", mountPoint: "secret");
 var jwtSecret = kv2Secret.Data.Data["secret"]?.ToString() ?? throw new Exception("Secret not found in Vault.");
 var jwtIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("Issuer not found in Vault.");
 

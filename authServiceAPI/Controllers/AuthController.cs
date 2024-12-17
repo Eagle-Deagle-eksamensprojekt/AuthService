@@ -131,7 +131,7 @@ if (response.IsSuccessStatusCode)
 
         // Valider passwordet
         var hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: login.Password,
+            password: login.Password!,
             salt: Convert.FromBase64String(user.Salt),
             prf: KeyDerivationPrf.HMACSHA256,
             iterationCount: 100000,
@@ -144,7 +144,7 @@ if (response.IsSuccessStatusCode)
         }
 
         // Generer JWT-token, hvis login er succesfuldt
-        var token = await GenerateJwtToken(login.UserEmail);
+        var token = await GenerateJwtToken(login.UserEmail!);
         _logger.LogInformation("Login successful for email: {Email}", login.UserEmail);
         return Ok(new { token });
     }
