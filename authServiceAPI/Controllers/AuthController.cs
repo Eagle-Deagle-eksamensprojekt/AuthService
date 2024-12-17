@@ -39,7 +39,8 @@ public class AuthController : ControllerBase
         //var vaultEndPoint = _config["VaultURL"]; // Vault-server URL
         var vaultEndPoint = "https://vaulthost:8300"; 
         _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
-        var token = _config["VAULT_DEV_ROOT_TOKEN_ID"]; // Vault-token // miljøvariabel sat i .env til compose
+        //var token = _config["VAULT_DEV_ROOT_TOKEN_ID"]; // Vault-token // miljøvariabel sat i .env til compose
+        var token = "00000000-0000-0000-0000-000000000000";
 
         var httpClientHandler = new HttpClientHandler
         {
