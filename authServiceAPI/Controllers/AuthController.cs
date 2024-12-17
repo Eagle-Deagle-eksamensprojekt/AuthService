@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
     {
         // Vault setup - konfigurer Vault-klient for at hente hemmeligheder
         //var vaultEndPoint = _config["VaultURL"]; // Vault-server URL
-        var vaultEndPoint = "http://0.0.0.0:8200";
+        var vaultEndPoint = "http://vaulthost:8200"; 
         _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
         var token = _config["VAULT_DEV_ROOT_TOKEN_ID"]; // Vault-token // miljøvariabel sat i .env til compose
 
@@ -55,9 +55,9 @@ public class AuthController : ControllerBase
         IVaultClient vaultClient = new VaultClient(vaultClientSettings);
 
         // Hent secret og issuer fra Vault
-        Secret<SecretData> kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "hemmeligheder", mountPoint: "secret");
-        mySecret = kv2Secret.Data.Data["secret"]?.ToString() ?? throw new Exception("Secret not found in Vault."); // Vigtigt, her skal "Secret" og "Issuer" være skrevet præcis som inde på vault
-        myIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("Issuer not found in Vault.");
+        var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "Secrets", mountPoint: "secret");
+        var jwtSecret = kv2Secret.Data.Data["jwtSecret"]?.ToString() ?? throw new Exception("jwtSecret not found in Vault.");
+        var jwtIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("jwtIssuer not found in Vault.");
 
     }
 
