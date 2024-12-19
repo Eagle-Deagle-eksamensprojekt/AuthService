@@ -17,7 +17,8 @@ var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings()
 
 // Hent Vault-konfigurationer
 var vaultUrl = builder.Configuration["VaultURL"];  // Vault URL
-var vaultToken = "00000000-0000-0000-0000-000000000000";  // Vault-token (tilpas som nødvendigt)
+var vaultToken = Environment.GetEnvironmentVariable("VAULT_TOKEN"); //henter token fra miljøvariabel
+
 
 // Opsæt Vault klient
 var authMethod = new TokenAuthMethodInfo(vaultToken);
@@ -25,9 +26,10 @@ var vaultClientSettings = new VaultClientSettings(vaultUrl, authMethod);
 var vaultClient = new VaultClient(vaultClientSettings);
 
 // Hent secret og issuer fra Vault
-var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "hemmeligheder", mountPoint: "secret");
-var jwtSecret = kv2Secret.Data.Data["secret"]?.ToString() ?? throw new Exception("Secret not found in Vault.");
-var jwtIssuer = kv2Secret.Data.Data["issuer"]?.ToString() ?? throw new Exception("Issuer not found in Vault.");
+var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "Secrets", mountPoint: "secret");
+var jwtSecret = kv2Secret.Data.Data["jwtSecret"]?.ToString() ?? throw new Exception("jwtSecret not found in Vault.");
+var jwtIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("jwtIssuer not found in Vault.");
+
 
 // JWT setup
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -53,7 +55,7 @@ builder.Services.AddAuthorization();
 // Add services to the container.
 builder.Services.AddControllers();
 
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddEndpointsApiExplorer(); 
 builder.Services.AddSwaggerGen();
 
 // Registrér at I ønsker at bruge NLOG som logger fremadrettet (før builder.build)

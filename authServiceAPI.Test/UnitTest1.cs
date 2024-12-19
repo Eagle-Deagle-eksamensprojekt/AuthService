@@ -1,16 +1,14 @@
-namespace authServiceAPI.Test;
+using NUnit.Framework;
+using Moq;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using AuthService.Controllers;
+using AuthService.Models;
+using Microsoft.AspNetCore.Mvc;
 
-public class Tests
+namespace authServiceAPI.Test
 {
-    [SetUp]
-    public void Setup()
+    public class AuthControllerTests
     {
-        
-    }
-
-    [Test]
-    public void Test1()
-    {
-        Assert.Pass();
     }
 }

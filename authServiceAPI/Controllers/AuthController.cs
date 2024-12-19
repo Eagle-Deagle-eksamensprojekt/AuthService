@@ -9,6 +9,8 @@ using VaultSharp;
 using VaultSharp.V1.AuthMethods.Token;
 using VaultSharp.V1.Commons;
 using AuthService.Models;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+
 
 namespace AuthService.Controllers;
 
@@ -32,34 +34,35 @@ public class AuthController : ControllerBase
         _httpClientFactory = httpClientFactory; // tjek
     }
     private async Task GetVaultSecrets() 
+{
+    var vaultEndPoint = _config["VaultURL"];
+    _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
+    var token = "00000000-0000-0000-0000-000000000000";
+
+    var httpClientHandler = new HttpClientHandler
     {
-        // Vault setup - konfigurer Vault-klient for at hente hemmeligheder
-        var vaultEndPoint = _config["VaultURL"]; // Vault-server URL
-        _logger.LogInformation("Connection to: {0} ", vaultEndPoint);
-        var token = "00000000-0000-0000-0000-000000000000"; // Vault-token
+        ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
+    };
 
-        var httpClientHandler = new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
-        };
+    var authMethod = new TokenAuthMethodInfo(token);
+    var vaultClientSettings = new VaultClientSettings(vaultEndPoint, authMethod)
+    {
+        MyHttpClientProviderFunc = handler => new HttpClient(httpClientHandler) { BaseAddress = new Uri(vaultEndPoint!) }
+    };
 
-        var authMethod = new TokenAuthMethodInfo(token);
-        var vaultClientSettings = new VaultClientSettings(vaultEndPoint, authMethod)
-        {
-            MyHttpClientProviderFunc = handler => new HttpClient(httpClientHandler) { BaseAddress = new Uri(vaultEndPoint!) } // lav tjek om vaultEndPoint er null
-        };
+    IVaultClient vaultClient = new VaultClient(vaultClientSettings);
 
-        IVaultClient vaultClient = new VaultClient(vaultClientSettings);
+    var kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "Secrets", mountPoint: "secret");
+    
+    // Gem værdierne i klassevariablerne
+    mySecret = kv2Secret.Data.Data["jwtSecret"]?.ToString() ?? throw new Exception("jwtSecret not found in Vault.");
+    myIssuer = kv2Secret.Data.Data["jwtIssuer"]?.ToString() ?? throw new Exception("jwtIssuer not found in Vault.");
 
-        // Hent secret og issuer fra Vault
-        Secret<SecretData> kv2Secret = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync(path: "hemmeligheder", mountPoint: "secret");
-        mySecret = kv2Secret.Data.Data["secret"]?.ToString() ?? throw new Exception("Secret not found in Vault."); // Vigtigt, her skal "Secret" og "Issuer" være skrevet præcis som inde på vault
-        myIssuer = kv2Secret.Data.Data["issuer"]?.ToString() ?? throw new Exception("Issuer not found in Vault.");
+    _logger.LogInformation("Vault JWT Secret: {JwtSecret}", mySecret);
+    _logger.LogInformation("Vault JWT Issuer: {JwtIssuer}", myIssuer);
+}
 
-    }
-
-    // Indsat fra opgave E i modul 12.1
-    // ændret d. 14/11/2024 tilpasset af chat så den sender email i stedet for username
+    // Hent brugerdata fra UserService
     private async Task<User?> GetUserData(LoginModel login)
     {
         // Tjek om brugeren eksisterer
@@ -80,7 +83,7 @@ public class AuthController : ControllerBase
             return null;
         }
 
-        if (response.IsSuccessStatusCode)
+if (response.IsSuccessStatusCode)
         {
             string responseContent = await response.Content.ReadAsStringAsync();
             _logger.LogInformation("Response content: {ResponseContent}", responseContent);
@@ -118,19 +121,36 @@ public class AuthController : ControllerBase
         // Log brug af email til console for at sikre korrekt værdi
         _logger.LogInformation("Attempting login with email: {Email}", login.UserEmail);
         
-        // Tjekker om brugeren eksisterer med den givne email
+        // Hent brugerdata baseret på email
         var user = await GetUserData(login);
-        if (user != null && login.Password == "123") // Opret et bedre password-tjek på sigt
+        if (user == null)
         {
-            var token = await GenerateJwtToken(login.UserEmail);
-            _logger.LogInformation("Login successful for email: {Email}", login.UserEmail);
-            return Ok(new { token });
+            _logger.LogWarning("User with email {Email} not found", login.UserEmail);
+            return Unauthorized("Invalid email or password.");
         }
-        _logger.LogWarning("Login failed for email: {Email}", login.UserEmail);
-        return Unauthorized();
+
+        // Valider passwordet
+        var hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+            password: login.Password!,
+            salt: Convert.FromBase64String(user.Salt),
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: 100000,
+            numBytesRequested: 256 / 8));
+
+        if (user.Password != hashedInputPassword)
+        {
+            _logger.LogWarning("Invalid password for email {Email}", login.UserEmail);
+            return Unauthorized("Invalid email or password.");
+        }
+
+        // Generer JWT-token, hvis login er succesfuldt
+        var token = await GenerateJwtToken(login.UserEmail!);
+        _logger.LogInformation("Login successful for email: {Email}", login.UserEmail);
+        return Ok(new { token });
     }
 
 
+    // Generer JWT-token
     private async Task<string> GenerateJwtToken(string username)
     {
         if (string.IsNullOrEmpty(username))
@@ -141,12 +161,6 @@ public class AuthController : ControllerBase
 
         await GetVaultSecrets();
         
-        /*
-        if (string.IsNullOrEmpty(mySecret) || string.IsNullOrEmpty(myIssuer))
-        {
-            throw new ArgumentNullException("Secret or Issuer is not set.");
-        }
-        */
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(mySecret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -166,6 +180,7 @@ public class AuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token); // Der bliver returneret ekstra information, ved ikke hvorfor
     }
 
+    
     public class LoginModel
     {
         public string? UserEmail { get; set; }

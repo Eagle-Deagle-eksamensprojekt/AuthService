@@ -8,10 +8,6 @@
         "description": "A unique identifier for the user (MongoDB ObjectId).",
         "pattern": "^[a-fA-F0-9]{24}$"
       },
-      "userId": {
-        "type": "string",
-        "description": "A secondary unique identifier for use in the system (more human-readable)."
-      },
       "firstname": {
         "type": "string",
         "description": "The user's first name."
@@ -46,10 +42,6 @@
       "isAdmin": {
         "type": "boolean",
         "description": "Specifies whether the user has administrative privileges."
-      },
-      "isSeller": {
-        "type": "boolean",
-        "description": "Specifies whether the user has seller permissions."
       }
     },
     "required": [
@@ -60,8 +52,7 @@
       "password",
       "phoneNumber",
       "createdDate",
-      "isAdmin",
-      "isSeller"
+      "isAdmin"
     ]
   }
   
