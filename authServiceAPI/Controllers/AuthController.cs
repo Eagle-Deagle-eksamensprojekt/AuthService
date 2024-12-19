@@ -62,9 +62,7 @@ public class AuthController : ControllerBase
     _logger.LogInformation("Vault JWT Issuer: {JwtIssuer}", myIssuer);
 }
 
-
-    // Indsat fra opgave E i modul 12.1
-    // ændret d. 14/11/2024 tilpasset af chat så den sender email i stedet for username
+    // Hent brugerdata fra UserService
     private async Task<User?> GetUserData(LoginModel login)
     {
         // Tjek om brugeren eksisterer
@@ -152,7 +150,7 @@ if (response.IsSuccessStatusCode)
     }
 
 
-
+    // Generer JWT-token
     private async Task<string> GenerateJwtToken(string username)
     {
         if (string.IsNullOrEmpty(username))
@@ -163,12 +161,6 @@ if (response.IsSuccessStatusCode)
 
         await GetVaultSecrets();
         
-        /*
-        if (string.IsNullOrEmpty(mySecret) || string.IsNullOrEmpty(myIssuer))
-        {
-            throw new ArgumentNullException("Secret or Issuer is not set.");
-        }
-        */
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(mySecret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -188,6 +180,7 @@ if (response.IsSuccessStatusCode)
         return new JwtSecurityTokenHandler().WriteToken(token); // Der bliver returneret ekstra information, ved ikke hvorfor
     }
 
+    
     public class LoginModel
     {
         public string? UserEmail { get; set; }
